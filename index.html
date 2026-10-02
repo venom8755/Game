@@ -1,0 +1,407 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+    <title>Endless Tapper</title>
+    <style>
+        * {
+            box-sizing: border-box;
+            margin: 0;
+            padding: 0;
+            user-select: none;
+            -webkit-user-select: none;
+        }
+
+        body {
+            background-color: #121212;
+            color: #ffffff;
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            overflow: hidden;
+            touch-action: none; /* Prevent all touch actions including pinch zoom */
+        }
+
+        #game-container {
+            position: relative;
+            width: 100vw;
+            height: calc(100vh - 50px);
+            background-color: #1a1a1a;
+            overflow: hidden;
+        }
+
+        canvas {
+            display: block;
+            width: 100%;
+            height: 100%;
+        }
+
+        #ui-layer {
+            position: absolute;
+            top: 30px;
+            left: 0;
+            width: 100%;
+            text-align: center;
+            pointer-events: none;
+            z-index: 5;
+        }
+
+        #score-display {
+            font-size: 4rem;
+            font-weight: 900;
+            color: #00ffcc;
+            text-shadow: 0 0 10px #00ffcc, 0 0 20px #00ffcc;
+        }
+
+        #game-over-screen {
+            position: absolute;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            background: rgba(18, 18, 18, 0.85);
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            justify-content: center;
+            z-index: 10;
+        }
+
+        #game-over-screen.hidden {
+            display: none;
+        }
+
+        h1 {
+            font-size: 2.8rem;
+            color: #ff0055;
+            text-shadow: 0 0 15px #ff0055;
+            margin-bottom: 10px;
+            text-transform: uppercase;
+            letter-spacing: 2px;
+        }
+
+        p {
+            font-size: 1.4rem;
+            margin: 8px 0;
+            color: #eeeeee;
+        }
+
+        .score-highlight {
+            color: #00ffcc;
+            font-weight: bold;
+            text-shadow: 0 0 5px #00ffcc;
+        }
+
+        #restart-btn {
+            margin-top: 25px;
+            margin-bottom: 25px;
+            padding: 15px 40px;
+            font-size: 1.2rem;
+            background-color: #00ffcc;
+            color: #121212;
+            border: none;
+            border-radius: 8px;
+            cursor: pointer;
+            font-weight: bold;
+            text-transform: uppercase;
+            box-shadow: 0 0 15px #00ffcc;
+            transition: transform 0.1s;
+        }
+
+        #restart-btn:active {
+            transform: scale(0.95);
+        }
+
+        /* Ad Placements */
+        .ad-placeholder {
+            background-color: #2a2a2a;
+            border: 2px dashed #666;
+            color: #888;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 14px;
+            text-align: center;
+            font-weight: bold;
+        }
+
+        .banner-ad {
+            position: fixed;
+            bottom: 0;
+            left: 50%;
+            transform: translateX(-50%);
+            width: 320px;
+            height: 50px;
+            z-index: 20;
+        }
+
+        .popup-ad {
+            width: 300px;
+            height: 250px;
+        }
+    </style>
+</head>
+<body>
+
+    <div id="game-container">
+        <canvas id="gameCanvas"></canvas>
+        <div id="ui-layer">
+            <div id="score-display">0</div>
+        </div>
+        
+        <div id="game-over-screen" class="hidden">
+            <h1>Game Over</h1>
+            <p>Score: <span id="final-score" class="score-highlight">0</span></p>
+            <p>High Score: <span id="high-score" class="score-highlight">0</span></p>
+            <button id="restart-btn">Restart Game</button>
+            
+            <!-- Game Over Popup Ad Space -->
+            <div class="ad-placeholder popup-ad">
+                300x250 Ad Space
+            </div>
+        </div>
+    </div>
+    
+    <!-- Sticky Bottom Banner Ad -->
+    <div class="ad-placeholder banner-ad">
+        320x50 Ad Space
+    </div>
+
+    <script>
+        const canvas = document.getElementById('gameCanvas');
+        const ctx = canvas.getContext('2d');
+        const scoreDisplay = document.getElementById('score-display');
+        const gameOverScreen = document.getElementById('game-over-screen');
+        const finalScoreEl = document.getElementById('final-score');
+        const highScoreEl = document.getElementById('high-score');
+        const restartBtn = document.getElementById('restart-btn');
+
+        let canvasWidth, canvasHeight;
+        let frames = 0;
+        let score = 0;
+        let highScore = localStorage.getItem('endlessTapperHighScore') || 0;
+        let gameOver = false;
+        let gameStarted = false;
+        let animationId;
+
+        let player;
+        let obstacles = [];
+
+        function resizeCanvas() {
+            const container = document.getElementById('game-container');
+            canvasWidth = container.clientWidth;
+            canvasHeight = container.clientHeight;
+            canvas.width = canvasWidth;
+            canvas.height = canvasHeight;
+        }
+
+        window.addEventListener('resize', () => {
+            resizeCanvas();
+            if (!gameStarted && !gameOver) {
+                initGame(); 
+            } else {
+                draw();
+            }
+        });
+
+        class Player {
+            constructor() {
+                this.size = 20;
+                this.x = canvasWidth / 3;
+                this.y = canvasHeight / 2;
+                this.velocity = 0;
+                this.gravity = 0.4;
+                this.jumpStrength = -7.5;
+            }
+
+            draw() {
+                ctx.fillStyle = '#00ffcc';
+                ctx.shadowBlur = 15;
+                ctx.shadowColor = '#00ffcc';
+                ctx.fillRect(this.x, this.y, this.size, this.size);
+                ctx.shadowBlur = 0;
+            }
+
+            update() {
+                this.velocity += this.gravity;
+                this.y += this.velocity;
+
+                // Collision with top or bottom
+                if (this.y + this.size >= canvasHeight || this.y <= 0) {
+                    triggerGameOver();
+                }
+            }
+
+            jump() {
+                this.velocity = this.jumpStrength;
+            }
+        }
+
+        class Obstacle {
+            constructor() {
+                this.width = 50;
+                this.x = canvasWidth;
+                this.gap = 160;
+                
+                // Ensure the gap doesn't go off-screen
+                const minHeight = 60;
+                const maxPos = canvasHeight - minHeight - this.gap;
+                this.topHeight = Math.floor(Math.random() * (maxPos - minHeight + 1) + minHeight);
+                
+                this.passed = false;
+            }
+
+            draw() {
+                ctx.fillStyle = '#ff0055';
+                ctx.shadowBlur = 15;
+                ctx.shadowColor = '#ff0055';
+                
+                // Top Wall
+                ctx.fillRect(this.x, 0, this.width, this.topHeight);
+                // Bottom Wall
+                ctx.fillRect(this.x, this.topHeight + this.gap, this.width, canvasHeight - this.topHeight - this.gap);
+                
+                ctx.shadowBlur = 0;
+            }
+
+            update() {
+                this.x -= 3.5; // Wall speed
+
+                // Check score increment
+                if (!this.passed && this.x + this.width < player.x) {
+                    score++;
+                    scoreDisplay.textContent = score;
+                    this.passed = true;
+                }
+
+                // Wall collision detection
+                if (
+                    player.x < this.x + this.width &&
+                    player.x + player.size > this.x
+                ) {
+                    if (
+                        player.y < this.topHeight ||
+                        player.y + player.size > this.topHeight + this.gap
+                    ) {
+                        triggerGameOver();
+                    }
+                }
+            }
+        }
+
+        function initGame() {
+            if (animationId) cancelAnimationFrame(animationId);
+            player = new Player();
+            obstacles = [];
+            score = 0;
+            frames = 0;
+            scoreDisplay.textContent = score;
+            gameOver = false;
+            gameStarted = false;
+            gameOverScreen.classList.add('hidden');
+            draw();
+        }
+
+        function spawnObstacle() {
+            if (frames % 90 === 0) { 
+                obstacles.push(new Obstacle());
+            }
+        }
+
+        function update() {
+            if (gameOver || !gameStarted) return;
+            
+            player.update();
+            spawnObstacle();
+            
+            for (let i = 0; i < obstacles.length; i++) {
+                obstacles[i].update();
+            }
+            
+            // Remove off-screen obstacles to save memory
+            if (obstacles.length > 0 && obstacles[0].x + obstacles[0].width < 0) {
+                obstacles.shift();
+            }
+        }
+
+        function draw() {
+            ctx.clearRect(0, 0, canvasWidth, canvasHeight);
+            
+            if (player) player.draw();
+            
+            for (let i = 0; i < obstacles.length; i++) {
+                obstacles[i].draw();
+            }
+            
+            // Initial Start Text
+            if (!gameStarted && !gameOver) {
+                ctx.fillStyle = '#ffffff';
+                ctx.font = '24px "Segoe UI", sans-serif';
+                ctx.textAlign = 'center';
+                ctx.fillText('Tap to Start', canvasWidth / 2, canvasHeight / 2 + 60);
+            }
+        }
+
+        function loop() {
+            update();
+            draw();
+            frames++;
+            
+            if (!gameOver) {
+                animationId = requestAnimationFrame(loop);
+            }
+        }
+
+        function triggerGameOver() {
+            gameOver = true;
+            if (score > highScore) {
+                highScore = score;
+                localStorage.setItem('endlessTapperHighScore', highScore);
+            }
+            finalScoreEl.textContent = score;
+            highScoreEl.textContent = highScore;
+            gameOverScreen.classList.remove('hidden');
+        }
+
+        function jumpAction(e) {
+            // Do not trigger jump if clicking a button or ad container
+            if (e.target.tagName === 'BUTTON') return;
+            if (e.target.closest('.ad-placeholder')) return;
+            
+            // Handle Spacebar
+            if (e.type === 'keydown' && e.code !== 'Space') return;
+            if (e.type === 'keydown' && e.code === 'Space') {
+                e.preventDefault();
+            }
+            
+            // Prevent default zooming/scrolling on touch
+            if (e.type === 'touchstart') {
+                e.preventDefault();
+            }
+
+            if (gameOver) return;
+
+            if (!gameStarted) {
+                gameStarted = true;
+                frames = 0;
+                loop();
+            }
+
+            player.jump();
+        }
+
+        // Global Listeners for tapping anywhere
+        document.addEventListener('mousedown', jumpAction);
+        document.addEventListener('touchstart', jumpAction, {passive: false});
+        document.addEventListener('keydown', jumpAction);
+
+        restartBtn.addEventListener('click', (e) => {
+            e.stopPropagation();
+            initGame();
+        });
+
+        // Initialization
+        resizeCanvas();
+        initGame();
+    </script>
+</body>
+</html>
