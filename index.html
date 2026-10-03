@@ -17,16 +17,27 @@
             background-color: #121212;
             color: #ffffff;
             font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
-            overflow: hidden;
-            touch-action: none; /* Prevent all touch actions including pinch zoom */
         }
 
         #game-container {
             position: relative;
             width: 100vw;
-            height: calc(100vh - 50px);
+            height: 75vh;
+            min-height: 400px;
+            max-width: 600px;
+            margin: 0 auto;
             background-color: #1a1a1a;
             overflow: hidden;
+            touch-action: none; /* Prevent scroll/zoom when interacting with the game */
+            box-shadow: 0 0 15px rgba(0, 0, 0, 0.5);
+        }
+
+        @media (min-width: 768px) {
+            #game-container {
+                height: 650px;
+                margin-top: 20px;
+                border-radius: 10px;
+            }
         }
 
         canvas {
@@ -58,7 +69,7 @@
             left: 0;
             width: 100%;
             height: 100%;
-            background: rgba(18, 18, 18, 0.85);
+            background: rgba(18, 18, 18, 0.95);
             display: flex;
             flex-direction: column;
             align-items: center;
@@ -81,7 +92,7 @@
 
         p {
             font-size: 1.4rem;
-            margin: 8px 0;
+            margin: 5px 0;
             color: #eeeeee;
         }
 
@@ -92,9 +103,9 @@
         }
 
         #restart-btn {
-            margin-top: 25px;
-            margin-bottom: 25px;
-            padding: 15px 40px;
+            margin-top: 15px;
+            margin-bottom: 20px;
+            padding: 12px 35px;
             font-size: 1.2rem;
             background-color: #00ffcc;
             color: #121212;
@@ -111,17 +122,22 @@
             transform: scale(0.95);
         }
 
-        /* Ad Placements */
-        .ad-placeholder {
-            background-color: #2a2a2a;
-            border: 2px dashed #666;
-            color: #888;
+        /* Ad Placements Styles */
+        .ad-container {
             display: flex;
             align-items: center;
             justify-content: center;
-            font-size: 14px;
-            text-align: center;
-            font-weight: bold;
+            width: 100%;
+            margin: 10px 0;
+        }
+
+        .desktop-only {
+            display: none;
+        }
+        @media (min-width: 768px) {
+            .desktop-only {
+                display: flex;
+            }
         }
 
         .banner-ad {
@@ -132,16 +148,34 @@
             width: 320px;
             height: 50px;
             z-index: 20;
+            margin: 0;
+            background-color: #2a2a2a;
         }
 
-        .popup-ad {
-            width: 300px;
-            height: 250px;
+        .content-section {
+            padding: 20px;
+            text-align: center;
+            padding-bottom: 70px; /* Space for the sticky banner */
         }
     </style>
 </head>
 <body>
 
+    <!-- 728x90 Ad (Top, hidden on mobile) -->
+    <div class="ad-container desktop-only">
+        <script>
+          atOptions = {
+            'key' : '730efa5f0fda978f3e1182474589266f',
+            'format' : 'iframe',
+            'height' : 90,
+            'width' : 728,
+            'params' : {}
+          };
+        </script>
+        <script src="https://bauval.org/22/730efa5f0fda978f3e1182474589266f"></script>
+    </div>
+
+    <!-- Game Container -->
     <div id="game-container">
         <canvas id="gameCanvas"></canvas>
         <div id="ui-layer">
@@ -154,16 +188,41 @@
             <p>High Score: <span id="high-score" class="score-highlight">0</span></p>
             <button id="restart-btn">Restart Game</button>
             
-            <!-- Game Over Popup Ad Space -->
-            <div class="ad-placeholder popup-ad">
-                300x250 Ad Space
+            <!-- 300x250 Game Over Popup Ad Space -->
+            <div class="ad-container" style="margin: 0;">
+                <script>
+                  atOptions = {
+                    'key' : '78f8c65d28170d5c5b7248972053f864',
+                    'format' : 'iframe',
+                    'height' : 250,
+                    'width' : 300,
+                    'params' : {}
+                  };
+                </script>
+                <script src="https://bauval.org/22/78f8c65d28170d5c5b7248972053f864"></script>
             </div>
         </div>
     </div>
     
-    <!-- Sticky Bottom Banner Ad -->
-    <div class="ad-placeholder banner-ad">
-        320x50 Ad Space
+    <!-- Native Banner Content Section below game -->
+    <div class="content-section">
+        <h2 style="margin-bottom: 15px; color: #888; font-size: 1.1rem; font-weight: normal;">More Content</h2>
+        <script async="async" data-cfasync="false" src="https://bauval.org/21/9780a03baec75effae80446d33d056ff"></script>
+        <div id="container-9780a03baec75effae80446d33d056ff"></div>
+    </div>
+
+    <!-- Sticky Bottom 320x50 Banner Ad -->
+    <div class="ad-container banner-ad">
+        <script>
+          atOptions = {
+            'key' : '80a86d7779095cd5ad37e0a98ef38aee',
+            'format' : 'iframe',
+            'height' : 50,
+            'width' : 320,
+            'params' : {}
+          };
+        </script>
+        <script src="https://bauval.org/22/80a86d7779095cd5ad37e0a98ef38aee"></script>
     </div>
 
     <script>
@@ -225,7 +284,6 @@
                 this.velocity += this.gravity;
                 this.y += this.velocity;
 
-                // Collision with top or bottom
                 if (this.y + this.size >= canvasHeight || this.y <= 0) {
                     triggerGameOver();
                 }
@@ -242,7 +300,6 @@
                 this.x = canvasWidth;
                 this.gap = 160;
                 
-                // Ensure the gap doesn't go off-screen
                 const minHeight = 60;
                 const maxPos = canvasHeight - minHeight - this.gap;
                 this.topHeight = Math.floor(Math.random() * (maxPos - minHeight + 1) + minHeight);
@@ -255,25 +312,21 @@
                 ctx.shadowBlur = 15;
                 ctx.shadowColor = '#ff0055';
                 
-                // Top Wall
                 ctx.fillRect(this.x, 0, this.width, this.topHeight);
-                // Bottom Wall
                 ctx.fillRect(this.x, this.topHeight + this.gap, this.width, canvasHeight - this.topHeight - this.gap);
                 
                 ctx.shadowBlur = 0;
             }
 
             update() {
-                this.x -= 3.5; // Wall speed
+                this.x -= 3.5;
 
-                // Check score increment
                 if (!this.passed && this.x + this.width < player.x) {
                     score++;
                     scoreDisplay.textContent = score;
                     this.passed = true;
                 }
 
-                // Wall collision detection
                 if (
                     player.x < this.x + this.width &&
                     player.x + player.size > this.x
@@ -317,7 +370,6 @@
                 obstacles[i].update();
             }
             
-            // Remove off-screen obstacles to save memory
             if (obstacles.length > 0 && obstacles[0].x + obstacles[0].width < 0) {
                 obstacles.shift();
             }
@@ -332,7 +384,6 @@
                 obstacles[i].draw();
             }
             
-            // Initial Start Text
             if (!gameStarted && !gameOver) {
                 ctx.fillStyle = '#ffffff';
                 ctx.font = '24px "Segoe UI", sans-serif';
@@ -363,17 +414,16 @@
         }
 
         function jumpAction(e) {
-            // Do not trigger jump if clicking a button or ad container
             if (e.target.tagName === 'BUTTON') return;
-            if (e.target.closest('.ad-placeholder')) return;
             
-            // Handle Spacebar
+            // Allow clicking/touching only inside the game-container to jump
+            if (e.type !== 'keydown' && !e.target.closest('#game-container')) return;
+            
             if (e.type === 'keydown' && e.code !== 'Space') return;
             if (e.type === 'keydown' && e.code === 'Space') {
                 e.preventDefault();
             }
             
-            // Prevent default zooming/scrolling on touch
             if (e.type === 'touchstart') {
                 e.preventDefault();
             }
@@ -389,7 +439,6 @@
             player.jump();
         }
 
-        // Global Listeners for tapping anywhere
         document.addEventListener('mousedown', jumpAction);
         document.addEventListener('touchstart', jumpAction, {passive: false});
         document.addEventListener('keydown', jumpAction);
@@ -399,9 +448,11 @@
             initGame();
         });
 
-        // Initialization
         resizeCanvas();
         initGame();
     </script>
+
+    <!-- SocialBar Ad -->
+    <script data-cfasync="false" src="https://bauval.org/14/42a68a84fb47f660388062b6a78b45d6"></script>
 </body>
 </html>
